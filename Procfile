@@ -1,1 +1,1 @@
-web: gunicorn chrome-extension.py:app
+web: gunicorn -b :$PORT app:app
