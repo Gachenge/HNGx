@@ -1,5 +1,4 @@
-from flask import Flask, request, jsonify, send_file
-import shutil
+from flask import Flask, request, jsonify
 from pathlib import Path
 import os
 import whisper
