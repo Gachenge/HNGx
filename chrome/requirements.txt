@@ -6,7 +6,8 @@ click
 cmake
 filelock
 Flask
-idnatsdangerous
+idna
+itsdangerous
 Jinja2
 lit
 llvmlite
