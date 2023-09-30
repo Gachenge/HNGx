@@ -32,7 +32,6 @@ openai-whisper
 regex
 requests
 sympy
-tiktoken
 torch
 tqdm
 triton
