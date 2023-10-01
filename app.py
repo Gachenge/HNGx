@@ -3,8 +3,10 @@ from pathlib import Path
 import os
 import whisper
 import subprocess
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 DESKTOP_PATH = Path.home() / "Desktop"
 FOLDER_NAME = "chrome_videos"
