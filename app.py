@@ -4,6 +4,7 @@ import os
 import whisper
 import subprocess
 from flask_cors import CORS
+import pika
 
 app = Flask(__name__)
 CORS(app)
@@ -13,23 +14,26 @@ FOLDER_NAME = "chrome_videos"
 FOLDER_PATH = DESKTOP_PATH / FOLDER_NAME
 FOLDER_PATH.mkdir(parents=True, exist_ok=True)
 
+RABBITMQ_HOST = "localhost"
+QUEUE_NAME = "transcription_tasks"
 
 @app.route("/api/upload", methods=["POST"])
 def upload_video():
-    if "file" not in request.files:
-        return jsonify({"error": "No video file supplied"}), 400
-    file = request.files["file"]
-    file_path = FOLDER_PATH / file.filename
-    file.save(file_path)
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "No video file supplied"}), 400
+        file = request.files["file"]
+        file_path = FOLDER_PATH / file.filename
+        file.save(file_path)
 
-    # Generate the transcript for the uploaded video and save it
-    transcription_file_path = generate_transcript(file_path)
+        send_task_to_queue(file_path)
+        print("task enqued")
 
-    return jsonify({
-        "video": f"{file.filename} saved successfully to chrome_videos folder on your desktop",
-        "transcription_path": str(transcription_file_path)
-    }), 200
-
+        return jsonify({
+            "video": f"{file.filename} saved successfully to chrome_videos folder on your desktop",
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/videos", methods=["GET"])
 def get_folder_contents():
@@ -39,36 +43,21 @@ def get_folder_contents():
     else:
         return jsonify({"folder_contents": contents})
 
-
-def generate_transcript(video_path):
-    converted_video_path = "converted_video.mp4"
-
-    ffmpeg_cmd = [
-        "ffmpeg",
-        "-i", str(video_path),
-        "-acodec", "libmp3lame",
-        "-ab", "192k",
-        "-ar", "44100",
-        converted_video_path
-    ]
-
+def send_task_to_queue(video_path):
     try:
-        subprocess.run(ffmpeg_cmd, check=True)
-        model = whisper.load_model("base")
-        result = model.transcribe(converted_video_path)
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+        channel = connection.channel()
 
-        # Save the transcript to a text file in the same folder as the video
-        transcription_file_path = video_path.parent / f"{video_path.stem}.srt"
-        with open(transcription_file_path, "w") as f:
-            f.write(result["text"])
+        channel.queue_declare(queue=QUEUE_NAME, durable=True)
+        print("channel added")
 
-        return transcription_file_path  # Return the file path of the transcript
+        message_body = str(video_path)
+        channel.basic_publish(exchange='', routing_key=QUEUE_NAME, body=message_body, properties=pika.BasicProperties(delivery_mode=2))
 
-    except subprocess.CalledProcessError as e:
-        return jsonify({"error": f"FFmpeg error: {e}"})
-    finally:
-        if os.path.exists(converted_video_path):
-            os.remove(converted_video_path)
+        connection.close()
+
+    except Exception as e:
+       return jsonify({"Error": str(e)})
 
 
 @app.route("/api/play/<video_name>", methods=["GET"])
@@ -77,10 +66,8 @@ def play_video(video_name):
     if not video_path.is_file():
         return jsonify({"error": "Video not found"}), 404
 
-    # Construct the transcript file path based on the video name
     transcription_file_path = video_path.parent / f"{video_path.stem}.srt"
 
-    # Return the video along with the transcript file path
     return jsonify({"video_path": str(video_path), "transcription_path": str(transcription_file_path)}), 200
 
 
