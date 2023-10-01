@@ -12,10 +12,8 @@ import json
 app = Flask(__name__)
 CORS(app)
 
-# Define the static folder path for storing video files
 STATIC_FOLDER = os.path.join(os.getcwd(), "static")
 
-# Ensure the static folder exists
 os.makedirs(STATIC_FOLDER, exist_ok=True)
 
 QUEUE_NAME = "transcription_tasks"
@@ -57,18 +55,14 @@ def upload_video():
             return jsonify({"error": "No video file supplied"}), 400
         file = request.files["file"]
         
-        # Generate a unique video ID
         unique_video_id = str(uuid.uuid4())
 
-        # Get the current date and time
         date_created = datetime.datetime.now().isoformat()
 
-        # Construct the video name and file path
         video_name = f"{unique_video_id}_{file.filename}"
         file_path = os.path.join(STATIC_FOLDER, video_name)
         file.save(file_path)
 
-        # Enqueue transcription task
         send_task_to_queue(file_path)
 
         response_data = {
@@ -101,15 +95,13 @@ def generate_transcript(video_path):
         model = whisper.load_model("base")
         result = model.transcribe(converted_video_path)
 
-        # Get the parent directory of the video_path using os.path.dirname
         parent_directory = os.path.dirname(video_path)
 
-        # Save the transcript to a text file in the same directory as the video
         transcript_file_path = os.path.join(parent_directory, f"{os.path.splitext(os.path.basename(video_path))[0]}.srt")
         with open(transcript_file_path, "w") as f:
             f.write(result["text"])
 
-        return transcript_file_path  # Return the file path of the transcript
+        return transcript_file_path
 
     except subprocess.CalledProcessError as e:
         return {"error": f"FFmpeg error: {e}"}
@@ -127,8 +119,7 @@ def get_folder_contents():
     else:
         return jsonify({"folder_contents": non_transcript_files})
 
-# Add routes for serving video files and transcripts if needed
-@app.route("/static/<video_name>", methods=["GET"])
+@app.route("/api/play/<video_name>", methods=["GET"])
 def serve_video(video_name):
     video_path = os.path.join(STATIC_FOLDER, video_name)
     if not os.path.isfile(video_path):
