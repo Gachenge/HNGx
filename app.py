@@ -5,6 +5,8 @@ import whisper
 import subprocess
 from flask_cors import CORS
 import pika
+import uuid
+import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -15,6 +17,7 @@ FOLDER_PATH = DESKTOP_PATH / FOLDER_NAME
 FOLDER_PATH.mkdir(parents=True, exist_ok=True)
 
 QUEUE_NAME = "transcription_tasks"
+VIDEO_UPLOAD_URL_PREFIX = "https://chrome-extension-api-k5qy.onrender.com"
 
 @app.route("/api/upload", methods=["POST"])
 def upload_video():
@@ -22,13 +25,34 @@ def upload_video():
         if "file" not in request.files:
             return jsonify({"error": "No video file supplied"}), 400
         file = request.files["file"]
-        file_path = FOLDER_PATH / file.filename
+
+        # Generate a unique video ID
+        unique_video_id = str(uuid.uuid4())
+
+        # Get the current date and time
+        date_created = datetime.datetime.now().isoformat()
+
+        # Construct the video name and file path
+        video_name = f"{unique_video_id}_{file.filename}"
+        file_path = FOLDER_PATH / video_name
         file.save(file_path)
 
         send_task_to_queue(file_path)
 
+        # Construct the video URL
+        video_url = f"{VIDEO_UPLOAD_URL_PREFIX}{video_name}"
+
+        # Create a dictionary with video information
+        video_info = {
+            "id": unique_video_id,
+            "video_url": video_url,
+            "video_name": str(video_name),  # Convert PosixPath to string
+            "date_created": date_created
+        }
+
         return jsonify({
             "video": f"{file.filename} saved successfully to chrome_videos folder on your desktop",
+            "video_info": video_info
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -86,7 +110,7 @@ def play_video(video_name):
 
     transcription_file_path = video_path.parent / f"{video_path.stem}.srt"
 
-    return jsonify({"video_path": str(video_path), "transcription_path": str(transcription_file_path)}), 200
+    return jsonify({"video_path": str(video_path), "transcripts": str(transcription_file_path)}), 200
 
 
 if __name__ == "__main__":
