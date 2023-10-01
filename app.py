@@ -68,16 +68,12 @@ def upload_video():
         file_path = os.path.join(STATIC_FOLDER, video_name)
         file.save(file_path)
 
-        # Generate the transcript for the uploaded video
-        transcript_file = generate_transcript(file_path)
-
         # Enqueue transcription task
-        video_info = send_task_to_queue(file_path)
+        send_task_to_queue(file_path)
 
         response_data = {
             "video": f"{file.filename} saved successfully to static folder",
-            "video_info": video_info,
-            "transcript": str(transcript_file)
+            "video_info": "Video processing task queued"
         }
 
         response = jsonify(response_data)
@@ -105,12 +101,15 @@ def generate_transcript(video_path):
         model = whisper.load_model("base")
         result = model.transcribe(converted_video_path)
 
-        # Save the transcript to a text file in the same folder as the video
-        transcription_file_path = video_path.parent / f"{video_path.stem}.srt"
-        with open(transcription_file_path, "w") as f:
+        # Get the parent directory of the video_path using os.path.dirname
+        parent_directory = os.path.dirname(video_path)
+
+        # Save the transcript to a text file in the same directory as the video
+        transcript_file_path = os.path.join(parent_directory, f"{os.path.splitext(os.path.basename(video_path))[0]}.srt")
+        with open(transcript_file_path, "w") as f:
             f.write(result["text"])
 
-        return transcription_file_path  # Return the file path of the transcript
+        return transcript_file_path  # Return the file path of the transcript
 
     except subprocess.CalledProcessError as e:
         return {"error": f"FFmpeg error: {e}"}
