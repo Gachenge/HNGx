@@ -14,7 +14,6 @@ FOLDER_NAME = "chrome_videos"
 FOLDER_PATH = DESKTOP_PATH / FOLDER_NAME
 FOLDER_PATH.mkdir(parents=True, exist_ok=True)
 
-RABBITMQ_HOST = "localhost"
 QUEUE_NAME = "transcription_tasks"
 
 @app.route("/api/upload", methods=["POST"])
@@ -27,7 +26,6 @@ def upload_video():
         file.save(file_path)
 
         send_task_to_queue(file_path)
-        print("task enqued")
 
         return jsonify({
             "video": f"{file.filename} saved successfully to chrome_videos folder on your desktop",
@@ -38,26 +36,46 @@ def upload_video():
 @app.route("/api/videos", methods=["GET"])
 def get_folder_contents():
     contents = os.listdir(FOLDER_PATH)
-    if len(contents) == 0:
-        return jsonify({"message": "No recordings found"}), 204
+    non_transcript_files = [content for content in contents if not content.endswith(".srt")]
+
+    if len(non_transcript_files) == 0:
+        return jsonify({"message": "No video recordings found"}), 204
     else:
-        return jsonify({"folder_contents": contents})
+        return jsonify({"folder_contents": non_transcript_files})
+
 
 def send_task_to_queue(video_path):
     try:
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+        # Get RabbitMQ connection parameters from environment variables
+        rabbitmq_host = os.environ.get('RABBITMQ_HOST', 'localhost')
+        rabbitmq_user = os.environ.get('RABBITMQ_DEFAULT_USER', 'rabbitmq')
+        rabbitmq_password = os.environ.get('RABBITMQ_DEFAULT_PASS', 'password')
+
+        # Create a connection to RabbitMQ
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(
+                host=rabbitmq_host,
+                credentials=pika.PlainCredentials(rabbitmq_user, rabbitmq_password),
+            )
+        )
         channel = connection.channel()
 
+        # Declare the queue
+        QUEUE_NAME = "transcription_tasks"
         channel.queue_declare(queue=QUEUE_NAME, durable=True)
-        print("channel added")
 
         message_body = str(video_path)
-        channel.basic_publish(exchange='', routing_key=QUEUE_NAME, body=message_body, properties=pika.BasicProperties(delivery_mode=2))
+        channel.basic_publish(
+            exchange='',
+            routing_key=QUEUE_NAME,
+            body=message_body,
+            properties=pika.BasicProperties(delivery_mode=2)
+        )
 
         connection.close()
 
     except Exception as e:
-       return jsonify({"Error": str(e)})
+        return jsonify({"Error": str(e)})
 
 
 @app.route("/api/play/<video_name>", methods=["GET"])
