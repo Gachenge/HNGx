@@ -5,6 +5,7 @@ click==8.1.7
 cmake==3.27.5
 filelock==3.12.4
 Flask==3.0.0
+Flask-Cors==4.0.0
 gunicorn==21.2.0
 idna==3.4
 itsdangerous==2.1.2
