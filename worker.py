@@ -4,9 +4,9 @@ import os
 import whisper
 
 # RabbitMQ connection parameters
-RABBITMQ_HOST = os.environ.get('RABBITMQ_HOST', 'localhost')
-RABBITMQ_USER = os.environ.get('RABBITMQ_DEFAULT_USER', 'rabbitmq')
-RABBITMQ_PASSWORD = os.environ.get('RABBITMQ_DEFAULT_PASS', 'password')
+RABBITMQ_HOST = os.environ.get('RABBIT_HOST', 'localhost')
+RABBITMQ_USER = os.environ.get('RABBIT_USER', 'user')
+RABBITMQ_PASSWORD = os.environ.get('RABBIT_PASS', 'password')
 QUEUE_NAME = "transcription_tasks"
 
 def callback(ch, method, properties, body):
