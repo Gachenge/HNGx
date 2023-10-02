@@ -3,6 +3,7 @@ import subprocess
 import os
 import whisper
 from dotenv import load_dotenv
+from flask import jsonify
 
 load_dotenv(".env")
 
