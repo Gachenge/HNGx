@@ -22,9 +22,9 @@ os.makedirs(STATIC_FOLDER, exist_ok=True)
 QUEUE_NAME = "transcription_tasks"
 VIDEO_UPLOAD_URL_PREFIX = "https://chrome-extension-api-k5qy.onrender.com"
 
-rabbitmq_host="lionfish-01.rmq.cloudamqp.com/gctzytvi"
-rabbitmq_user="gctzytvi"
-rabbitmq_password="HuFMOqQqJpNjBqk8tiktUOENOgYdgT59"
+rabbitmq_host = os.environ.get('RABBITMQ_HOST')
+rabbitmq_user = os.environ.get('RABBITMQ_USER')
+rabbitmq_password = os.environ.get('RABBITMQ_PASSWORD')
 
 def send_task_to_queue(video_path):
     try:
