@@ -2,11 +2,17 @@ import pika
 import subprocess
 import os
 import whisper
+from dotenv import load_dotenv
+
+load_dotenv(".env")
+
+STATIC_FOLDER = os.path.join(os.getcwd(), "static")
 
 # RabbitMQ connection parameters
-RABBITMQ_HOST = os.environ.get('RABBIT_HOST', 'localhost')
-RABBITMQ_USER = os.environ.get('RABBIT_USER', 'user')
-RABBITMQ_PASSWORD = os.environ.get('RABBIT_PASS', 'password')
+rabbitmq_host="lionfish-01.rmq.cloudamqp.com/gctzytvi"
+rabbitmq_user="gctzytvi"
+rabbitmq_password="HuFMOqQqJpNjBqk8tiktUOENOgYdgT59"
+
 QUEUE_NAME = "transcription_tasks"
 
 def callback(ch, method, properties, body):
@@ -27,7 +33,7 @@ def callback(ch, method, properties, body):
         model = whisper.load_model("base")
         result = model.transcribe(converted_video_path)
 
-        transcription_file_path = video_path.parent / f"{video_path.stem}.srt"
+        transcription_file_path =  os.path.join(STATIC_FOLDER, f"{video_path.stem}.srt" ) 
         with open(transcription_file_path, "w") as f:
             f.write(result["text"])
 
@@ -38,12 +44,9 @@ def callback(ch, method, properties, body):
     finally:
         if os.path.exists(converted_video_path):
             os.remove(converted_video_path)
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(
-        host=RABBITMQ_HOST,
-        credentials=pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASSWORD),
-    )
-)
+parameters = pika.URLParameters(f"amqps://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}")
+#print(parameters)
+connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 
 # Declare the queue

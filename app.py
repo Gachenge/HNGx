@@ -8,6 +8,9 @@ import pika
 import uuid
 import datetime
 import json
+from dotenv import load_dotenv
+
+load_dotenv(".env")
 
 app = Flask(__name__)
 CORS(app)
@@ -19,18 +22,16 @@ os.makedirs(STATIC_FOLDER, exist_ok=True)
 QUEUE_NAME = "transcription_tasks"
 VIDEO_UPLOAD_URL_PREFIX = "https://chrome-extension-api-k5qy.onrender.com"
 
-RABBITMQ_HOST = os.environ.get('RABBIT_HOST', 'localhost')
-RABBITMQ_USER = os.environ.get('RABBIT_USER', 'user')
-RABBITMQ_PASSWORD = os.environ.get('RABBIT_PASS', 'password')
+rabbitmq_host="lionfish-01.rmq.cloudamqp.com/gctzytvi"
+rabbitmq_user="gctzytvi"
+rabbitmq_password="HuFMOqQqJpNjBqk8tiktUOENOgYdgT59"
 
 def send_task_to_queue(video_path):
     try:
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(
-                host=RABBITMQ_HOST,
-                credentials=pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASSWORD),
-            )
-        )
+        parameters = pika.URLParameters(f"amqps://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}")
+        #print(parameters)
+        connection = pika.BlockingConnection(parameters)
+
         channel = connection.channel()
 
         channel.queue_declare(queue=QUEUE_NAME, durable=True)
