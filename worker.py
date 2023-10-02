@@ -2,21 +2,15 @@ import pika
 import subprocess
 import os
 import whisper
-from dotenv import load_dotenv
-from flask import Flask, jsonify
-
-load_dotenv(".env")
 
 STATIC_FOLDER = os.path.join(os.getcwd(), "static")
 
 # RabbitMQ connection parameters
-rabbitmq_host = os.environ.get('RABBITMQ_HOST')
-rabbitmq_user = os.environ.get('RABBITMQ_USER')
-rabbitmq_password = os.environ.get('RABBITMQ_PASSWORD')
+rabbitmq_host = os.getenv("RABBITMQ_HOST")
+rabbitmq_user = os.getenv("RABBITMQ_USER")
+rabbitmq_password = os.getenv("RABBITMQ_PASSWORD")
 
 QUEUE_NAME = "transcription_tasks"
-
-app = Flask(__name__)
 
 def callback(ch, method, properties, body):
     video_path = body.decode()
@@ -36,20 +30,19 @@ def callback(ch, method, properties, body):
         model = whisper.load_model("base")
         result = model.transcribe(converted_video_path)
 
-        transcription_file_path = os.path.join(STATIC_FOLDER, f"{video_path.stem}.srt")
+        newName = video_path.split('.')[0]+".srt"
+
+        transcription_file_path =  os.path.join(STATIC_FOLDER, newName) 
         with open(transcription_file_path, "w") as f:
             f.write(result["text"])
 
-        with app.app_context():
-            return jsonify({"error": f"FFmpeg error: {e}"})
+        return transcription_file_path
 
     except subprocess.CalledProcessError as e:
-        with app.app_context():
-            return jsonify({"error": f"FFmpeg error: {e}"})
+        return jsonify({"error": f"FFmpeg error: {e}"})
     finally:
         if os.path.exists(converted_video_path):
             os.remove(converted_video_path)
-
 parameters = pika.URLParameters(f"amqps://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}")
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()

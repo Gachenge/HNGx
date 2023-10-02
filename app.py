@@ -8,9 +8,6 @@ import pika
 import uuid
 import datetime
 import json
-from dotenv import load_dotenv
-
-load_dotenv(".env")
 
 app = Flask(__name__)
 CORS(app)
@@ -22,9 +19,9 @@ os.makedirs(STATIC_FOLDER, exist_ok=True)
 QUEUE_NAME = "transcription_tasks"
 VIDEO_UPLOAD_URL_PREFIX = "https://chrome-extension-api-k5qy.onrender.com"
 
-rabbitmq_host = os.environ.get('RABBITMQ_HOST')
-rabbitmq_user = os.environ.get('RABBITMQ_USER')
-rabbitmq_password = os.environ.get('RABBITMQ_PASSWORD')
+rabbitmq_host = os.getenv("RABBITMQ_HOST")
+rabbitmq_user = os.getenv("RABBITMQ_USER")
+rabbitmq_password = os.getenv("RABBITMQ_PASSWORD")
 
 def send_task_to_queue(video_path):
     try:
