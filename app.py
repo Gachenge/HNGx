@@ -8,25 +8,22 @@ import pika
 import uuid
 import datetime
 import json
+from worker import worker_main
+from multiprocessing import Process
+from config import STATIC_FOLDER, QUEUE_NAME, RABBITMQ_HOST, RABBITMQ_USER, RABBITMQ_PASSWORD
+
 
 app = Flask(__name__)
 CORS(app)
 
-STATIC_FOLDER = os.path.join(os.getcwd(), "static")
-
 os.makedirs(STATIC_FOLDER, exist_ok=True)
 
-QUEUE_NAME = "transcription_tasks"
 VIDEO_UPLOAD_URL_PREFIX = "https://chrome-extension-api-k5qy.onrender.com"
 
-rabbitmq_host = os.getenv("RABBITMQ_HOST")
-rabbitmq_user = os.getenv("RABBITMQ_USER")
-rabbitmq_password = os.getenv("RABBITMQ_PASSWORD")
 
 def send_task_to_queue(video_path):
     try:
-        parameters = pika.URLParameters(f"amqps://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}")
-        #print(parameters)
+        parameters = pika.URLParameters(f"amqps://{RABBITMQ_USER}:{RABBITMQ_PASSWORD}@{RABBITMQ_HOST}")
         connection = pika.BlockingConnection(parameters)
 
         channel = connection.channel()
@@ -57,15 +54,17 @@ def upload_video():
 
         date_created = datetime.datetime.now().isoformat()
 
-        video_name = f"{unique_video_id}_{file.filename}"
+        video_name = file.filename
         file_path = os.path.join(STATIC_FOLDER, video_name)
         file.save(file_path)
 
         send_task_to_queue(file_path)
 
         response_data = {
-            "video": f"{file.filename} saved successfully to static folder",
-            "video_info": "Video processing task queued"
+            "id": unique_video_id,
+            "video_name": file.filename,
+            "created_at": date_created,
+            "video_info": "Video created successfull and processing task queued"
         }
 
         response = jsonify(response_data)
@@ -120,10 +119,27 @@ def get_folder_contents():
 @app.route("/api/play/<video_name>", methods=["GET"])
 def serve_video(video_name):
     video_path = os.path.join(STATIC_FOLDER, video_name)
-    if not os.path.isfile(video_path):
-        return jsonify({"error": "Video not found"}), 404
+    srt_path = os.path.join(STATIC_FOLDER, f"{os.path.splitext(video_name)[0]}.srt")
 
-    return send_file(video_path)
+    if not os.path.isfile(video_path) or not os.path.isfile(srt_path):
+        return jsonify({"error": "Video or subtitle not found"}), 404
+
+    response = send_file(
+        video_path,
+        as_attachment=True,
+        download_name=f"{video_name}.mp4",
+        mimetype="video/mp4",
+    )
+
+    response.headers["X-SRT-File"] = srt_path
+    return response
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    flask_process = Process(target=app.run, kwargs={"debug": True})
+    flask_process.start()
+
+    worker_process = Process(target=worker_main)
+    worker_process.start()
+
+    flask_process.join()
+    worker_process.join()
