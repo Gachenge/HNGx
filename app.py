@@ -124,7 +124,7 @@ def serve_video(video_name):
     if not os.path.isfile(video_path):
         return jsonify({"error": "Video not found"}), 404
     if not os.path.isfile(srt_path):
-        return jsonify({"error": "SRT not found"}), 404
+        return jsonify({"error": "Transcribed text not found"}), 404
 
     response = send_file(
         video_path,
