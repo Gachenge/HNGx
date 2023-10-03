@@ -121,8 +121,10 @@ def serve_video(video_name):
     video_path = os.path.join(STATIC_FOLDER, video_name)
     srt_path = os.path.join(STATIC_FOLDER, f"{os.path.splitext(video_name)[0]}.srt")
 
-    if not os.path.isfile(video_path) or not os.path.isfile(srt_path):
-        return jsonify({"error": "Video or subtitle not found"}), 404
+    if not os.path.isfile(video_path):
+        return jsonify({"error": "Video not found"}), 404
+    if not os.path.isfile(srt_path):
+        return jsonify({"error": "SRT not found"}), 404
 
     response = send_file(
         video_path,
