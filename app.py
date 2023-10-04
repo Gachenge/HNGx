@@ -8,6 +8,7 @@ import pika
 import uuid
 import datetime
 import json
+import time
 from worker import worker_main
 from multiprocessing import Process
 from config import STATIC_FOLDER, QUEUE_NAME, RABBITMQ_HOST, RABBITMQ_USER, RABBITMQ_PASSWORD
@@ -103,6 +104,7 @@ def generate_transcript(video_path):
     except subprocess.CalledProcessError as e:
         return {"error": f"FFmpeg error: {e}"}
     finally:
+        time.sleep(5)
         if os.path.exists(converted_video_path):
             os.remove(converted_video_path)
 

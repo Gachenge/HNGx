@@ -1,9 +1,12 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv(".env")
 
 STATIC_FOLDER = os.path.join(os.getcwd(), "static")
 
 QUEUE_NAME = "transcription_tasks"
 
-RABBITMQ_HOST = "lionfish-01.rmq.cloudamqp.com/gctzytvi"
-RABBITMQ_USER = "gctzytvi"
-RABBITMQ_PASSWORD = "HuFMOqQqJpNjBqk8tiktUOENOgYdgT59"
+RABBITMQ_HOST = os.environ.get('RABBITMQ_HOST')
+RABBITMQ_USER = os.environ.get('RABBITMQ_USER')
+RABBITMQ_PASSWORD = os.environ.get('RABBITMQ_PASSWORD')
