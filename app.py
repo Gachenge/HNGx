@@ -76,38 +76,6 @@ def upload_video():
         error_response = {"error": str(e)}
         return jsonify(error_response), 500
 
-def generate_transcript(video_path):
-    converted_video_path = "converted_video.mp4"
-
-    ffmpeg_cmd = [
-        "ffmpeg",
-        "-i", str(video_path),
-        "-acodec", "libmp3lame",
-        "-ab", "192k",
-        "-ar", "44100",
-        converted_video_path
-    ]
-
-    try:
-        subprocess.run(ffmpeg_cmd, check=True)
-        model = whisper.load_model("base")
-        result = model.transcribe(converted_video_path)
-
-        parent_directory = os.path.dirname(video_path)
-
-        transcript_file_path = os.path.join(parent_directory, f"{os.path.splitext(os.path.basename(video_path))[0]}.srt")
-        with open(transcript_file_path, "w") as f:
-            f.write(result["text"])
-
-        return transcript_file_path
-
-    except subprocess.CalledProcessError as e:
-        return {"error": f"FFmpeg error: {e}"}
-    finally:
-        time.sleep(5)
-        if os.path.exists(converted_video_path):
-            os.remove(converted_video_path)
-
 @app.route("/api/videos", methods=["GET"])
 def get_folder_contents():
     contents = os.listdir(STATIC_FOLDER)
